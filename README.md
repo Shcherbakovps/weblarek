@@ -31,6 +31,7 @@ yarn start
 ```
 ## Сборка
 
+
 ```
 npm run build
 ```
@@ -40,6 +41,197 @@ npm run build
 ```
 yarn build
 ```
+
+## Данные, которые будут использоваться в приложении и классах
+### Интерфейсы
+В приложении будут задействованы следующие интерфейсы данных:
+```ts
+//Товар
+interface IProduct {
+  id: string;            //ID-номер товара
+  description: string;   //Описание товара
+  image: string;         //Ссылка на изображение
+  title: string;         //Название
+  category: string;      //Категория товара
+  price: number | null;  //Цена товара
+}
+
+//Покупатель
+interface IBuyer {
+  payment: TPayment;     //тип оплаты
+  email: string;         //адрес эл.почты
+  phone: string;         //телефон
+  address: string;       //адрес доставки
+}
+```
+### Модели данных
+В приложении задействованы три модели данных: каталог товаров, корзина, покупатель.
+У каждой модели своя зона ответственности. 
+
+#### Каталог товаров
+Представляет собой список всех товаров на главной странице. Показывает выбранный товар.
+Св-ва: 
+-Хранит массив всех товаров;
+-Хранит товар, выбранный для подробного отображения.
+Методы: 
+-сохранения массива товаров полученного в параметрах метода;
+-получение массива товаров из модели;
+-получение одного товара по его id;
+-сохранения товара для подробного отображения;
+-получение товара для подробного отображения.
+```ts
+class Catalog {
+  private products: IProduct[] = [];
+  private selectedProduct: IProduct | null = null;
+
+  setProducts(products: IProduct[]): void {
+    this.products = products;
+  }
+
+  getProducts(): IProduct[] {
+    return this.products;
+  }
+
+  getProductById(id: string): IProduct | undefined {
+    for (let i = 0; i < this.products.length; i++) {
+      const product = this.products[i];
+      if (product.id === id) {
+        return product;
+      }
+    }
+    return undefined; 
+  }
+
+  setSelectedProduct(product: IProduct): void {
+    this.selectedProduct = product;
+  }
+
+  getSelectedProduct(): IProduct | null {
+    return this.selectedProduct;
+  }
+}
+```
+#### Корзина
+Хранит товары, которые покупатель выбрал для покупки
+Св-ва:
+-хранит массив товаров, которые добавил в корзину покупатель.
+Методы:
+-получение массива товаров, которые находятся в корзине;
+-добавление товара, который был получен в параметре в массив корзины;
+-удаление товара, полученного в параметре из массива корзины;
+-очистка корзины;
+-получение стоимости всех товаров в корзине;
+-получение количества товаров в корзине;
+-проверка наличия товара в корзине по его id, полученному в параметр метода. 
+```ts
+class Cart {
+  private items: IProduct[] = [];
+  
+  //узнаем, что лежит в корзине
+  getItems(): IProduct[] {
+    return this.items;
+  }
+
+  //кладем товар в корзину
+  addItem(product: IProduct): void {
+    this.items.push(product);
+  }
+
+  //удаляем товар
+  removeItem(id: string): void {
+    this.items = this.items.filter(function(item) {
+      return item.id !== id;
+    });
+  }
+
+  //чистим массив внутри корзины
+  clear(): void {
+    this.items = [];
+  }
+
+  //cумма товаров в корзине
+  getTotalPrice(): number {
+    let total = 0;
+    for (let i = 0; i < this.items.length; i++) {
+        const product = this.items[i];
+        const price = product.price ?? 0;
+        total = total + price;
+    }
+    return total;
+  }
+  
+  //узнаем количество товаров в корзине
+  getItemCount(): number {
+    return this.items.length;
+  }
+
+  //есть ли в корзине данный товар
+  hasItem(id: string): boolean {
+    return this.items.some(function(item) {
+      return item.id === id;
+    });
+  }
+}
+```
+#### Покупатель
+Хранит данные о покупатели, которые нужны для последующего оформления заказа.
+Св-ва:
+-вид оплаты;
+-адрес;
+-телефон;
+-e-mail. 
+Методы: 
+-сохранение данных в модели. Один общий метод или отдельные методы для каждого поля;
+-получение всех данных покупателя;
+-очистка данных покупателя;
+-валидация данных.
+```ts
+class Buyer {
+  private payment: TPayment | null = null;
+  private address: string = '';
+  private phone: string = '';
+  private email: string = '';
+
+  setBuyerData(data: IBuyer): void {
+    this.payment = data.payment;
+    this.address = data.address;
+    this.phone = data.phone;
+    this.email = data.email;
+  }
+
+  getBuyerData(): IBuyer {
+    return {
+      payment: this.payment as TPayment,
+      address: this.address,
+      phone: this.phone,
+      email: this.email,
+    };
+  }
+
+  clear(): void {
+    this.payment = null;
+    this.address = '';
+    this.phone = '';
+    this.email = '';
+  }
+
+  validate(): boolean {
+    return Boolean(this.payment && this.address && this.phone && this.email);
+  }
+}
+```
+
+## Слой коммуникации
+Для взаимодействия с сервером используем класс 'ShopAPI', который отвечает за обмен данными приложения и сервера "Веб-ларёк".
+Ф-ии класса 'ShopAPI': 
+- получение массива карточек товара с помощью 'GET / product';
+- отправка заказа (выбранные товары и данные покупателя) на сервер с помощью 'POST /order/'.
+Класс использует слудеющую композицию: в конструктор передается объект 'Api', реализованный в стартовом ките.
+Методы класса: 
+- 'getProducts()' - получить каталог карточек товара с сервера;
+- 'createOrder(data: IOrderRequest)' - отправляет данные заказа и возвращает ответ сервера.
+
+
 # Интернет-магазин «Web-Larёk»
 «Web-Larёk» — это интернет-магазин с товарами для веб-разработчиков, где пользователи могут просматривать товары, добавлять их в корзину и оформлять заказы. Сайт предоставляет удобный интерфейс с модальными окнами для просмотра деталей товаров, управления корзиной и выбора способа оплаты, обеспечивая полный цикл покупки с отправкой заказов на сервер.
 
@@ -68,7 +260,6 @@ Presenter - презентер содержит основную логику п
 Методы класса:  
 `render(data?: Partial<T>): HTMLElement` - Главный метод класса. Он принимает данные, которые необходимо отобразить в интерфейсе, записывает эти данные в поля класса и возвращает ссылку на DOM-элемент. Предполагается, что в классах, которые будут наследоваться от `Component` будут реализованы сеттеры для полей с данными, которые будут вызываться в момент вызова `render` и записывать данные в необходимые DOM элементы.  
 `setImage(element: HTMLImageElement, src: string, alt?: string): void` - утилитарный метод для модификации DOM-элементов `<img>`
-
 
 #### Класс Api
 Содержит в себе базовую логику отправки запросов.
