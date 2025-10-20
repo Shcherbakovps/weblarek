@@ -15,6 +15,14 @@ export interface IProduct {
   price: number | null;  //Цена товара
 }
 
+//Галлерея - гл.старница
+//export interface IGallary {
+  //products: IProduct[];
+  //getProduct(productId: string): IProduct;
+  //getProductPrice(productId: string): IProductPrice;
+//}
+
+
 //Покупатель
 export interface IBuyer {
   payment: TPayment;     //тип оплаты

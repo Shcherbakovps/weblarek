@@ -1,3 +1,4 @@
+import { IEvents } from "../components/base/Events";
 import { IBuyer, TPayment } from "../types";
 
 export class Buyer {
@@ -6,12 +7,15 @@ export class Buyer {
   private phone: string = '';
   private email: string = '';
 
+  constructor(private events: IEvents) {}
+
   //метод заполнения данных
   setBuyerData(data: IBuyer): void {
     this.payment = data.payment;
     this.address = data.address;
     this.phone = data.phone;
     this.email = data.email;
+    this.events.emit('buyer:changed', this.getBuyerData());
   }
 
   //Получаем объект с данными покупателя
@@ -30,10 +34,13 @@ export class Buyer {
     this.address = '';
     this.phone = '';
     this.email = '';
+    this.events.emit('buyer:cleared');
   }
 
   //проверяем заполненность каждого поля 
   validate(): boolean {
-    return Boolean(this.payment && this.address && this.phone && this.email);
+    const isValid = Boolean(this.payment && this.address && this.phone && this.email);
+    this.events.emit('buyer:validated', { valid: isValid }); 
+    return isValid;
   }
 }

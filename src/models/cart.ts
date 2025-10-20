@@ -1,7 +1,10 @@
+import { IEvents } from "../components/base/Events";
 import { IProduct } from "../types";
 
 export class Cart {
   private items: IProduct[] = [];
+
+  constructor(private events: IEvents) {}
   
   //узнаем, что лежит в корзине
   getItems(): IProduct[] {
@@ -11,6 +14,7 @@ export class Cart {
   //кладем товар в корзину
   addItem(product: IProduct): void {
     this.items.push(product);
+    this.events.emit('cart:changed', this.items);
   }
 
   //удаляем товар
@@ -18,11 +22,13 @@ export class Cart {
     this.items = this.items.filter(function(item) {
       return item.id !== id;
     });
+    this.events.emit('cart:changed', this.items);
   }
 
   //чистим массив внутри корзины
   clear(): void {
     this.items = [];
+    this.events.emit('cart:cleared');
   }
 
   //cумма товаров в корзине
