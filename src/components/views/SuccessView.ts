@@ -14,6 +14,10 @@ export class SuccessView extends Component<{}> {
   setDescription(text: string) {
     this.descriptionElement.textContent = text;
   }
+  
+  setTransactionValue(value: number) {
+    this.descriptionElement.textContent = `Списано ${value} синапсов`;
+  }
 
   onClose(handler: () => void) {
     this.closeButton.addEventListener('click', handler);

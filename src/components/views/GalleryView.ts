@@ -1,8 +1,7 @@
 import { Component } from "../base/Component";
-import { CardCatalogView } from "./CardCatalogView";
 
 interface IGalleryData {
-    cards: CardCatalogView[];
+    cards: HTMLElement[];
 }
 
 export class GalleryView extends Component<IGalleryData> {
@@ -14,8 +13,7 @@ export class GalleryView extends Component<IGalleryData> {
       super.render(data);
 
       if (data && data.cards) {
-        const elements = data.cards.map(card => card.render());
-        this.container.replaceChildren(...elements);
+        this.container.replaceChildren(...data.cards);
       }
 
       return this.container;

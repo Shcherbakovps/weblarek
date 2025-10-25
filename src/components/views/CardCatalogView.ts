@@ -1,23 +1,17 @@
-import { IProduct } from "../../types";
 import { ensureElement } from "../../utils/utils";
-import { Component } from "../base/Component";
 import { IEvents } from "../base/Events";
 import { categoryMap } from "../../utils/constants";
 import { CDN_URL } from "../../utils/constants";
+import { CardBaseView } from "./CardBaseView";
 
-export class CardCatalogView extends Component<IProduct> {
-    protected titleElement: HTMLElement;
+export class CardCatalogView extends CardBaseView {
     protected imageElement: HTMLImageElement;
-    protected priceElement: HTMLElement;
     protected categoryElement: HTMLElement;
 
     constructor(container: HTMLElement, protected events: IEvents) {
         super(container);
-        this.titleElement = ensureElement<HTMLElement>('.card__title', this.container);
         this.imageElement = ensureElement<HTMLImageElement>('.card__image', this.container);
-        this.priceElement = ensureElement<HTMLElement>('.card__price', this.container);
         this.categoryElement = ensureElement<HTMLElement>('.card__category', this.container);
-
         this.container.addEventListener('click', () => {
             this.events.emit('card:select', {id: this.container.dataset.id});
         });
@@ -25,10 +19,6 @@ export class CardCatalogView extends Component<IProduct> {
 
     set id(value: string) {
         this.container.dataset.id = value;
-    }
-
-    set title(value: string) {
-        this.titleElement.textContent = value;
     }
 
     set image(value: string) {
@@ -41,13 +31,7 @@ export class CardCatalogView extends Component<IProduct> {
     // Убираем возможный ведущий слэш и повтор "weblarek/"
     const cleanPath = value.replace(/^\/+/, '').replace(/^weblarek\//, '');
     const src = `${CDN_URL}/${cleanPath}`;
-  
-    console.log('product.image cleaned:', value, '->', src);
     this.setImage(this.imageElement, src, this.titleElement.textContent || '');
-    }
-
-    set price(value: number | null) {
-        this.priceElement.textContent = value ? `${value} синапсов` : 'Бесценно';
     }
 
     set category(value: string) {

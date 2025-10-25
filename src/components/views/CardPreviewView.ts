@@ -1,22 +1,18 @@
-import { IProduct } from "../../types";
 import { ensureElement } from "../../utils/utils";
 import { IEvents } from "../base/Events";
-import { Component } from "../base/Component";
 import { CDN_URL } from "../../utils/constants";
+import { CardBaseView } from "./CardBaseView";
 
-export class CardPreviewView extends Component<IProduct> {
+
+export class CardPreviewView extends CardBaseView {
     private imageElement: HTMLImageElement;
-    private titleElement: HTMLElement;
     private textElement: HTMLElement;
-    private priceElement: HTMLElement;
     private addButtonElement: HTMLButtonElement;
 
     constructor(container: HTMLElement, protected events: IEvents) {
       super(container);
       this.imageElement = ensureElement<HTMLImageElement>('.card__image', this.container);
-      this.titleElement = ensureElement<HTMLElement>('.card__title', this.container);
       this.textElement = ensureElement<HTMLElement>('.card__text', this.container);
-      this.priceElement = ensureElement<HTMLElement>('.card__price', this.container);
       this.addButtonElement = ensureElement<HTMLButtonElement>('.card__button', this.container);  
 
       //вешаем слушатель на кнопку
@@ -44,16 +40,8 @@ export class CardPreviewView extends Component<IProduct> {
       this.setImage(this.imageElement, src, this.titleElement.textContent || '');
     }
 
-    set title(value: string) {
-        this.titleElement.textContent = value;
-    }
-
     set description(value: string) {
         this.textElement.textContent = value;
-    }
-
-    set price(value: number | null) {
-        this.priceElement.textContent = value ? `${value} синапсов` : 'Бесценно'
     }
 
     render(): HTMLElement {

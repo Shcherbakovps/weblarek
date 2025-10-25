@@ -1,8 +1,13 @@
 import { ensureElement } from "../../utils/utils";
 import { Component } from "../base/Component";
-import { CardBasketView } from "./CardBasketView";
 
-export class BasketView extends Component<{}> {
+interface BasketViewState {
+    items: HTMLElement[]; 
+    total: number;
+    isDisabled: boolean;
+}
+
+export class BasketView extends Component<BasketViewState> {
     private listElement: HTMLElement;
     private totalElement: HTMLElement;
     private orderButton: HTMLButtonElement;
@@ -14,21 +19,19 @@ export class BasketView extends Component<{}> {
         this.orderButton = ensureElement<HTMLButtonElement>('.basket__button', this.container);
     }
 
-    //Отрисовка карточек, лежащих в корзине из массива КардБаскетВью
-    renderCards(cards: CardBasketView[]) {
-        const elements = cards.map(element => element.render());
+    set items(elements: HTMLElement[]) {
         this.listElement.replaceChildren(...elements);
     }
 
-    setTotalPrice(value: number) {
+    set total(value: number) {
         this.totalElement.textContent = `${value} синапсов`;
+    }
+
+    set isDisabled(value: boolean) {
+        this.orderButton.disabled = value;
     }
 
     onOrder(handler: () => void) {
         this.orderButton.addEventListener('click', handler);
-    }
-
-    render(): HTMLElement {
-        return this.container;
     }
 }

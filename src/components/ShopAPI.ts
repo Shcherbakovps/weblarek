@@ -7,17 +7,13 @@ export type ProductsResponse = {
 }
 
 export class ShopAPI {
-    private api: Api;
+  constructor(private api: Api) {}
 
-    constructor(api: Api) {
-      this.api = api;
-    }
+  getProducts(): Promise<ProductsResponse> {
+    return this.api.get<ProductsResponse>('/product');
+  }
 
-    getProducts(): Promise<ProductsResponse> {
-        return this.api.get<ProductsResponse>('/product');
-    }
-
-    postOrder(order: IOrderRequest): Promise<IOrderResponse> {
-        return this.api.post<IOrderResponse>('/order', order);
-    }
+  postOrder(order: IOrderRequest): Promise<IOrderResponse> {
+    return this.api.post<IOrderResponse>('/order', order);
+  }
 }
