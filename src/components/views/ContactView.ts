@@ -30,6 +30,6 @@ export class ContactView extends BaseFormView<IBuyer> {
             this.phoneInput.value = state.phone ?? '';
         }
         return super.render(state);
-    }
-  }
+    }    
+}
 

@@ -11,6 +11,9 @@ export class Cart {
   }
 
   addItem(product: IProduct): void {
+    if (this.hasItem(product.id)) {
+      return;
+    }
     this.items.push(product);
     this.events.emit('cart:changed', this.items);
   }

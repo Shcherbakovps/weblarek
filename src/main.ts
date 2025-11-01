@@ -22,6 +22,7 @@ import { ContactView } from './components/views/ContactView';
 import { ModalWindowView } from './components/views/ModalWindowView';
 import { CardPreviewView } from './components/views/CardPreviewView';
 import { SuccessView } from './components/views/SuccessView';
+import { Header } from './components/views/Header';
 
 //ПЕРЕМЕННЫЕ
 //Глобальный эмиттер событий
@@ -41,19 +42,22 @@ const shopAPI = new ShopAPI(api);
 const galleryElement = document.querySelector('.gallery') as HTMLElement;
 const galleryView = new GalleryView(galleryElement);
 const cardTemplate = document.querySelector('#card-catalog') as HTMLTemplateElement;
+const previewTemplate = document.querySelector('#card-preview') as HTMLTemplateElement;
 
 //Модальное окно
 const modalContainer = document.querySelector('#modal-container') as HTMLElement;
 const modalView = new ModalWindowView(modalContainer);
 
+// Хедер
+const headerElement = document.querySelector('.header') as HTMLElement;
+const headerView = new Header(events, headerElement);
+
 //Корзина
 const basketTemplate = document.querySelector('#basket') as HTMLTemplateElement;
-const basketView = new BasketView(cloneTemplate(basketTemplate));
-const basketButton = document.querySelector('.header__basket') as HTMLElement;
+const basketView = new BasketView(cloneTemplate(basketTemplate), events);
 const basketCardTemplate = document.querySelector('#card-basket') as HTMLTemplateElement;
-const basketCounter = document.querySelector('.header__basket-counter') as HTMLElement;
-
-basketButton.addEventListener('click', () => {
+// открытие корзины по событию из Header
+events.on('basket:open', () => {
   modalView.open(basketView.render());
 });
 
@@ -71,13 +75,15 @@ const orderView = new OrderView(orderNode, events);
 const successTemplate = document.querySelector('#success') as HTMLTemplateElement;
 const successView = new SuccessView(cloneTemplate(successTemplate));
 
+let currentPreview: CardPreviewView | null = null;
+
 //запрос продуктов с сервера
 shopAPI.getProducts()
   .then((data) => catalog.setProducts(data.items))
   .catch((err) => console.error('Ошибка загрузки:', err));
 
 //СОБЫТИЯ
-//Каталог изменен (отрисовка карточек)
+//Каталог изменен
 events.on('catalog:changed', () => {
   const products = catalog.getProducts();
   const cards = products.map((product) => {
@@ -112,65 +118,156 @@ events.on('cart:changed', () => {
     isDisabled: basketCards.length === 0
   });
 
-  modalView.open(basketView.render());
-  basketCounter.textContent = String(items.length);
+  headerView.counter = items.length;
+
+  if (currentPreview) {
+    const id = currentPreview.id;
+    currentPreview.goodInCart = cart.hasItem(id);
+  } 
 });
 
-
-
-//Обновление данных покупателя
+//Обновление данных покупателя - только сохранение данных
 events.on('buyer:update', (data: Partial<IBuyer>) => {
-  buyer.setBuyerData(data);
+  const current = buyer.getBuyerData();
+  const merged: IBuyer = {
+    payment: data.payment !== undefined ? data.payment : current.payment,
+    address: data.address !== undefined ? data.address : current.address,
+    phone: data.phone !== undefined ? data.phone : current.phone,
+    email: data.email !== undefined ? data.email : current.email,
+  };
+  buyer.setBuyerData(merged);
+});
 
-  // Валидация без эмита
-  const valid = buyer.validate();
+//изменение данных покупателя
+events.on('buyer:changed', (state: IBuyer) => {
+  orderView.render(state);
+  contactView.render(state);
 
-  // Кнопки включаются/выключаются в зависимости от валидности
-  orderView.setSubmitDisabled(!valid);
-  contactView.setSubmitDisabled(!valid);
+  // Определяем шаг валидации по наличию данных
+  const hasContactFields = (state.phone && state.phone.trim()) || (state.email && state.email.trim());
+  let step: 'order' | 'contacts' = hasContactFields ? 'contacts' : 'order';
+
+  const errors: Partial<Record<keyof IBuyer, string>> = {};
+  
+  if (step === 'order') {
+    if (!state.payment) errors.payment = 'Необходимо выбрать способ оплаты';
+    if (!state.address?.trim()) errors.address = 'Необходимо указать адрес';
+  } else {
+    // Для контактов проверяем только заполненные поля (чтобы не показывать ошибки для пустых полей)
+    if (state.email && state.email.trim()) {
+      const emailValue = state.email.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+        errors.email = 'Введите корректный email';
+      }
+    }
+    if (state.phone && state.phone.trim()) {
+      const phoneValue = state.phone.trim();
+      if (!/^\+?\d{10,15}$/.test(phoneValue.replace(/\s/g, ''))) {
+        errors.phone = 'Введите корректный номер телефона';
+      }
+    }
+  }
+
+  // Для кнопки сабмита проверяем все поля шага
+  let isValidForSubmit = false;
+  if (step === 'order') {
+    isValidForSubmit = Boolean(state.payment && state.address?.trim());
+  } else {
+    const emailValid = state.email?.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email.trim());
+    const phoneValid = state.phone?.trim() && /^\+?\d{10,15}$/.test(state.phone.trim().replace(/\s/g, ''));
+    isValidForSubmit = Boolean(emailValid && phoneValid);
+  }
+
+  // Кнопки включаются/выключаются в зависимости от валидности всех полей шага
+  orderView.setSubmitDisabled(!(step === 'order' && isValidForSubmit));
+  contactView.setSubmitDisabled(!(step === 'contacts' && isValidForSubmit));
+
+  // Сообщаем об ошибках
+  events.emit('buyer:validated', { valid: Object.keys(errors).length === 0, errors, step });
 });
 
 //Сабмит форм
 events.on('order:submit', () => {
-  const ok = buyer.validate();
+  const data = buyer.getBuyerData();
+  const errors: Partial<Record<keyof IBuyer, string>> = {};
+  if (!data.payment) errors.payment = 'Необходимо выбрать способ оплаты';
+  if (!data.address?.trim()) errors.address = 'Необходимо указать адрес';
+  const ok = Object.keys(errors).length === 0;
   if (ok) {
     modalView.open(contactView.render());
   } else {
+    events.emit('buyer:validated', { valid: false, errors, step: 'order' });
     modalView.open(orderView.render());
   }
 });
 
 events.on('contacts:submit', () => {
-  const ok = buyer.validate();
+  const data = buyer.getBuyerData();
+  const errors: Partial<Record<keyof IBuyer, string>> = {};
+  const emailValid = data.email?.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim());
+  const phoneValid = data.phone?.trim() && /^\+?\d{10,15}$/.test(data.phone.trim().replace(/\s/g, ''));
+  
+  if (!emailValid) {
+    errors.email = !data.email?.trim() ? 'Введите email' : 'Введите корректный email';
+  }
+  if (!phoneValid) {
+    errors.phone = !data.phone?.trim() ? 'Введите номер телефона' : 'Введите корректный номер телефона';
+  }
+  
+  const ok = emailValid && phoneValid;
   if (ok) {
-    modalView.open(successView.render());
-    successView.setTransactionValue(cart.getTotalPrice());
-
-    successView.onClose(() => {
-      modalView.close();
-      events.emit('order:complete');
-    });
+    const orderData = {
+      payment: buyer.getBuyerData().payment,
+      address: buyer.getBuyerData().address,
+      email: buyer.getBuyerData().email,
+      phone: buyer.getBuyerData().phone,
+      total: cart.getTotalPrice(),
+      items: cart.getItems().map(item => item.id)
+    };
+       shopAPI.postOrder(orderData)
+      .then((response) => {
+        console.log('Заказ успешно отправлен:', response);
+        const total = cart.getTotalPrice();
+        cart.clear();
+        buyer.clear();
+        modalView.open(successView.render());
+        successView.setTransactionValue(total);
+        successView.onClose(() => {
+          modalView.close();
+        });
+      })
+      .catch((error) => {
+        console.error('Ошибка при отправке заказа:', error);
+        contactView.setError('Не удалось отправить заказ');
+      });
   } else {
+    events.emit('buyer:validated', { valid: false, errors, step: 'contacts' });
     modalView.open(contactView.render());
   }
 });
 
 //Ошибки форм
-events.on('buyer:validated', (data: { valid: boolean; errors?: Record<string, string> }) => {
-  const { valid, errors } = data;
-
+events.on('buyer:validated', (data: { valid: boolean; errors?: Record<string, string>, step?: string }) => {
+  const { valid, errors, step } = data;
   if (!valid && errors) {
-    orderView.setError(errors.address || errors.payment || '');
-    contactView.setError(errors.phone || errors.email || '');
+    if (step === 'order') {
+      orderView.setError(errors.address || errors.payment || '');
+      contactView.clearError();
+    } else if (step === 'contacts') {
+      // Показываем ошибку только для того поля, которое действительно имеет ошибку
+      const errorMessage = errors.email || errors.phone || '';
+      contactView.setError(errorMessage);
+      orderView.clearError();
+    }
   } else {
     orderView.clearError();
     contactView.clearError();
   }
 });
 
-//Просмотр товара в модальном окне
+//Товар выбран
 events.on('product:selected', (product: IProduct) => {
-  const previewNode = cloneTemplate(document.querySelector('#card-preview') as HTMLTemplateElement);
+  const previewNode = cloneTemplate(previewTemplate);
   const preview = new CardPreviewView(previewNode, events);
 
   preview.id = product.id;
@@ -178,7 +275,11 @@ events.on('product:selected', (product: IProduct) => {
   preview.description = product.description || '';
   preview.price = product.price;
   preview.image = product.image;
+  preview.category = product.category;
 
+  const isInCart = cart.hasItem(product.id);
+  preview.goodInCart = isInCart;
+  currentPreview = preview; 
   modalView.open(preview.render());
 });
 
@@ -195,7 +296,9 @@ events.on('card:add-to-cart', ({ id }: { id: string }) => {
 
 events.on('cart:remove-item', ({ id }: { id: string }) => cart.removeItem(id));
 
-basketView.onOrder(() => modalView.open(orderView.render()));
+events.on('basket:order', () => {
+  modalView.open(orderView.render());
+});
 
 // Очистка после завершения заказа
 events.on('order:complete', () => {

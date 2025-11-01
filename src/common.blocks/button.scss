@@ -8,13 +8,16 @@
   &_alt {
     @include mixins.button(white, $primaryLight, $primaryLight);
     border: $defaultBorder;
-    &:hover {
+    transition: border-color 0.3s ease; //исправление
+    &:hover,
+    &:focus {           //добавили фокус   
       border: $hoverBorder;
     }
   }
 
   &_alt-active {
     @include mixins.button(white, $primaryLight, $primaryLight);
-    border: $hoverBorder;
+    //border: $hoverBorder;  <--закомментировали
+    border: 2px solid #ffffff;
   }
 }

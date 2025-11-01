@@ -1,5 +1,6 @@
 import { ensureElement } from "../../utils/utils";
 import { Component } from "../base/Component";
+import { IEvents } from "../base/Events";
 
 interface BasketViewState {
     items: HTMLElement[]; 
@@ -12,11 +13,15 @@ export class BasketView extends Component<BasketViewState> {
     private totalElement: HTMLElement;
     private orderButton: HTMLButtonElement;
 
-    constructor(container: HTMLElement) {
+    constructor(container: HTMLElement, events: IEvents) {
         super(container);
         this.listElement = ensureElement<HTMLElement>('.basket__list', this.container);
         this.totalElement = ensureElement<HTMLElement>('.basket__price', this.container);
         this.orderButton = ensureElement<HTMLButtonElement>('.basket__button', this.container);
+        
+        this.orderButton.addEventListener('click', () => {
+            events.emit('basket:order');
+        });
     }
 
     set items(elements: HTMLElement[]) {
@@ -29,9 +34,5 @@ export class BasketView extends Component<BasketViewState> {
 
     set isDisabled(value: boolean) {
         this.orderButton.disabled = value;
-    }
-
-    onOrder(handler: () => void) {
-        this.orderButton.addEventListener('click', handler);
     }
 }

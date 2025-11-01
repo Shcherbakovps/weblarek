@@ -25,7 +25,7 @@ export class OrderView extends BaseFormView<IBuyer> {
         );
 
         this.addressInput.addEventListener('input', () =>
-            this.handleInput('address', this.addressInput.value.trim())
+            this.handleInput('address', this.addressInput.value)
         );
     }
 
@@ -34,6 +34,10 @@ export class OrderView extends BaseFormView<IBuyer> {
             this.addressInput.value = state.address ?? '';
             this.cardButton.classList.toggle('button_alt-active', state.payment === 'card');
             this.cashButton.classList.toggle('button_alt-active', state.payment === 'cash');
+            const isValid = Boolean(state.payment && state.address && state.address.trim());
+            this.setSubmitDisabled(!isValid);
+        } else {
+            this.setSubmitDisabled(true);
         }
         return super.render(state);
     }

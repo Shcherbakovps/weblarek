@@ -20,10 +20,17 @@
     font-size: 1.4rem;
     width: 100%;
     box-sizing: border-box;
-    outline-color: $secondary;
+    //outline-color: $secondary;
+    outline: none;
+    transition: border-color 0.3s ease, outline-color 0.3s ease;
 
     &:focus {
-      outline-style: solid;
+      //outline-style: solid;
+     border: 2px solid #ffffff;
+    }
+
+    &:not(:placeholder-shown) {
+    border: 2px solid #ffffff;
     }
 
     &:invalid {
